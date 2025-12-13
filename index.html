@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-dnevnik i evidencija prisustva</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        /* Osnovne varijable i paleta boja (Flat Design) */
+        :root {
+            --bg: #f7fff7; 
+            --primary: #2e7d32; 
+            --muted: #a5d6a7; 
+            --text: #333; 
+            --danger: #f44336;
+        }
+
+        /* Opći stilovi tijela i kontejnera */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 20px;
+            color: var(--text);
+        }
+
+        .app {
+            display: flex;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            position: relative; 
+        }
+
+        .logout-btn {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: #ff5252; 
+            color: white;
+            padding: 8px 15px;
+            font-size: 0.8em;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .logout-btn:hover {
+            background: #e53935;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        h2 {
+            color: var(--primary);
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--muted);
+            padding-bottom: 5px;
+        }
+
+        /* Navigacija i bočna traka (Sidebar) */
+        .sidebar {
+            width: 240px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+            height: fit-content;
+            overflow: auto;
+            position: sticky;
+            top: 20px;
+        }
+
+        .sidebar h3 {
+            margin: 0 0 15px;
+            color: var(--primary);
+        }
+
+        .class-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .class-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 4px;
+            transition: background 0.1s;
+        }
+
+        .class-list li.active {
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        .class-list li.active .delete-class-btn {
+            background: #e8f5e9;
+            color: var(--primary);
+        }
+
+        .class-list li:hover:not(.active) {
+            background: #e6f4e6;
+        }
+
+        .add-class {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .delete-class-btn {
+            background: #ef5350;
+            color: #fff;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.9em;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Opći stilovi forme */
+        form label {
+            display: block;
+            margin: 12px 0 6px;
+            font-weight: 600;
+        }
+
+        form input,
+        form select {
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--muted);
+            font-size: 1em;
+            box-sizing: border-box;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .form-row .half {
+            flex: 1;
+        }
+
+        .form-classes {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .form-classes label {
+            font-weight: normal;
+            background: #f1fff1;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #e6f4e6;
+            cursor: pointer;
+        }
+        
+        /* Tabela stilovi */
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 800px;
+            border-collapse: separate;
+            border-spacing: 0 4px;
+        }
+
+        th,
+        td {
+            padding: 12px 10px;
+            text-align: left;
+            border: none;
+            vertical-align: middle;
+        }
+
+        th {
+            background: var(--primary);
+            color: #fff;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        td {
+            background: #fff;
+            border-bottom: 1px solid #eee;
+        }
+
+        /* Stilovi za dugmad */
+        button {
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .add-grade-btn {
+            background-color: var(--primary);
+            color: white;
+            font-weight: bold;
+        }
+
+        .delete-btn {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .save-btn {
+            background-color: #007BFF;
+            color: white;
+        }
+
+        .pdf-btn {
+            background-color: #FF5722;
+            color: white;
+        }
+
+        .save-btn.yellow {
+            background-color: #fbc02d;
+            color: #000;
+        }
+        
+        /* Skrivanje akcija i nebitnih elemenata za učenike */
+        .teacher-only, .student-hidden-actions { display: none !important; }
+        
+        /* Prikazivanje skrivenih elemenata i akcija za nastavnike */
+        body:not(.student-mode) .teacher-only { display: block !important; } 
+        body:not(.student-mode) .student-hidden-actions { display: table-cell !important; } 
+
+        /* Prilagodbe za učenike */
+        .student-mode .sidebar,
+        .student-mode #addStudentCard,
+        .student-mode .teacher-only {
+            display: none !important;
+        }
+        
+        .student-mode .student-hidden-actions { 
+            display: none !important; 
+        }
+
+        /* Ocjene i prisustvo tagovi */
+        .grade-tag {
+            display: inline-flex;
+            align-items: center;
+            margin: 3px 4px 3px 0;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.9em;
+        }
+        
+        .delete-grade-btn {
+            padding: 0 4px;
+            margin-left: 5px;
+            font-size: 0.8em;
+            background: rgba(0,0,0,0.1);
+            color: #333;
+            border-radius: 50%;
+            line-height: 1;
+        }
+        .student-mode .delete-grade-btn { display: none; } /* Učenici ne brišu ocjene */
+
+
+        .prisutan {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .odsutan {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        /* Grade color classes */
+        .grade-1 { background-color: #ffe0b2; }
+        .grade-2 { background-color: #ffcc80; }
+        .grade-3 { background-color: #fff176; }
+        .grade-4 { background-color: #c5e1a5; }
+        .grade-5 { background-color: #81c784; color: #333; }
+
+        /* === Modals === */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 0;
+            padding: 25px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 550px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            overflow-y: auto;
+            max-height: 90vh;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 32px;
+            font-weight: bold;
+            cursor: pointer
+        }
+
+        .close:hover {
+            color: #333
+        }
+
+        .class-badge {
+            background: #e8f5e9;
+            padding: 4px 10px;
+            border-radius: 12px;
+            border: 1px solid #cfe8cf
+        }
+        .footer-note{ font-size:0.9em; color:#666 }
+
+        /* Login Screen Styles */
+        #loginScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 10000;
+        }
+
+        .login-card {
+            background: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            max-width: 350px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .login-card h1 {
+            color: var(--primary);
+            margin-bottom: 25px;
+        }
+
+        .login-card input[type="text"], 
+        .login-card input[type="password"] {
+            margin-bottom: 20px;
+            border: 1px solid var(--muted);
+            width: calc(100% - 24px);
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 1em;
+            box-sizing: border-box;
+        }
+
+        .login-card button {
+            background-color: var(--primary);
+            color: white;
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        #loginError {
+            color: var(--danger);
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        
+        .login-hint {
+            font-size: 0.8em;
+            margin-top: 20px;
+            color: #666;
+            text-align: left;
+        }
+        .login-hint strong { color: var(--primary); }
+
+        /* Responzivnost */
+        @media (max-width: 900px) {
+            .app {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                position: relative;
+                width: 100%;
+                height: auto;
+                top: 0;
+            }
+
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+            
+            .modal-content {
+                width: 95%;
+                max-width: none;
+            }
+            
+            .logout-btn {
+                position: static;
+                transform: none;
+                margin-top: 10px;
+                display: block;
+                width: calc(100% - 30px);
+            }
+        }
+    </style>
+</head>
+<body onload="checkLogin()">
+
+<div id="loginScreen" style="display: none;">
+    <div class="login-card">
+        <h1>Prijava u E-dnevnik</h1>
+        <form id="loginForm">
+            <input type="text" id="username" placeholder="Korisničko ime" required>
+            <input type="password" id="password" placeholder="Lozinka" required>
+            <button type="submit">Prijavi se</button>
+            <div id="loginError"></div>
+        </form>
+        <div class="login-hint">
+            <strong>Učenik login:</strong> Korisničko ime: `ime.prezime` (npr. `pero.perić`). Lozinka: `ucenik123`.
+        </div>
+    </div>
+</div>
+
+<div id="mainApp" style="display: none;">
+    <header>
+        E-dnevnik i evidencija prisustva (<span id="userRoleDisplay"></span>)
+        <button class="logout-btn" onclick="logout()">Odjava</button>
+    </header>
+    <div class="app">
+        <aside class="sidebar card teacher-only">
+            <h3>Razredi</h3>
+            <ul class="class-list" id="classList"></ul>
+            <div class="add-class">
+                <input type="text" id="newClassName" placeholder="Novi razred (npr. 1.A)">
+                <button onclick="addClass()">Dodaj</button>
+            </div>
+            <hr style="margin: 15px 0;">
+            <div class="footer-note">Klik na razred filtrira prikaz učenika. "Svi razredi" prikazuje sve.</div>
+        </aside>
+
+        <main class="main">
+            <div class="container">
+
+                <div class="card teacher-only" id="addStudentCard">
+                    <h2>Dodaj učenika</h2>
+                    <form id="studentForm">
+                        <label>Ime i prezime:</label>
+                        <input type="text" id="studentName" placeholder="Npr. Pero Perić" required>
+                        <div class="form-row">
+                            <div class="half">
+                                <label>Vladanje:</label>
+                                <select id="behavior">
+                                    <option value="Odlično">Odlično</option>
+                                    <option value="Dobro">Dobro</option>
+                                    <option value="Zadovoljavajuće">Zadovoljavajuće</option>
+                                    <option value="Nedovoljno">Nedovoljno</option>
+                                </select>
+                            </div>
+                            <div class="half">
+                                <label>Izaberi razrede:</label>
+                                <div id="formClasses" class="form-classes"></div>
+                            </div>
+                        </div>
+                        <button type="submit" class="save-btn">Dodaj učenika</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h2>Popis učenika i ocjena</h2>
+                    <div class="table-wrap">
+                        <table id="studentsTable">
+                            <thead>
+                                <tr>
+                                    <th>Učenik (izostanci)</th>
+                                    <th>Razredi</th>
+                                    <th>Vladanje</th>
+                                    <th>1. polugodište</th>
+                                    <th>2. polugodište</th>
+                                    <th>Ocjene</th>
+                                    <th>Prosjek</th>
+                                    <th class="student-hidden-actions">Akcije</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <button class="delete-btn teacher-only" style="margin-top: 15px;" onclick="obrisiSveUcenike()">Obriši sve učenike</button>
+                </div>
+
+                <div class="card teacher-only">
+                    <h2>Evidencija prisustva</h2>
+                    <label for="datum">Odaberi datum:</label>
+                    <input type="date" id="datum" onchange="ucitajLekciju(); prikaziUcenike();">
+                    
+                    <label>Odjevenost:</label>
+                    <input type="text" id="dressCodeInput" placeholder="Npr. Uniforme su ispoštovane" style="width:100%; margin-bottom:8px;">
+
+                    <label>Što se radilo na satu:</label>
+                    <input type="text" id="lessonInput" style="width:100%; margin-bottom:8px;">
+
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Prezime i ime</th>
+                                    <th>Prisustvo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaUcenika"></tbody>
+                        </table>
+                    </div>
+                    <button class="save-btn" onclick="spremiLekciju()">Spremi lekciju i prisustvo</button>
+                    <button class="pdf-btn" onclick="preuzmiPDFPopis()">Preuzmi cijeli popis</button>
+                    <button class="delete-btn" onclick="obrisiPopis()">Obriši cijeli popis</button>
+                </div>
+
+            </div>
+        </main>
+    </div>
+</div>
+
+<div id="gradeModal" class="modal">
+    <div class="modal-content">
+        <span class="close" data-close="gradeModal">&times;</span>
+        <h2>Unesi ocjenu</h2>
+        <form id="modalGradeForm">
+            <label>Vrsta unosa:</label>
+            <select id="modalType">
+                <option value="regular">Predmet</option>
+                <option value="final">Zaključna ocjena</option>
+            </select>
+            <div id="subjectInputGroup">
+                <label>Predmet:</label>
+                <input type="text" id="modalSubject">
+            </div>
+            <label>Ocjena:</label>
+            <select id="modalGrade" required>
+                <option value="5">5</option>
+                <option value="4">4</option>
+                <option value="3">3</option>
+                <option value="2">2</option>
+                <option value="1">1</option>
+            </select>
+            <label>Vrsta ocjene:</label>
+            <select id="modalGradeType" required>
+                <option value="Usmeni odgovor">Usmeni odgovor</option>
+                <option value="Aktivnost">Aktivnost</option>
+                <option value="Test">Test</option>
+                <option value="Vježba">Vježba</option>
+            </select>
+            <label>Vladanje:</label>
+            <select id="modalBehavior">
+                <option value="Odlično">Odlično</option>
+                <option value="Dobro">Dobro</option>
+                <option value="Zadovoljavajuće">Zadovoljavajuće</option>
+                <option value="Nedovoljno">Nedovoljno</option>
+            </select>
+            <button type="submit" class="add-grade-btn">Dodaj</button>
+        </form>
+    </div>
+</div>
+
+<div id="classesModal" class="modal">
+    <div class="modal-content">
+        <span class="close" data-close="classesModal">&times;</span>
+        <h2>Odaberi razrede za učenika</h2>
+        <div id="classesCheckboxes"></div>
+        <button onclick="saveStudentClasses()" class="save-btn">Spremi razrede</button>
+    </div>
+</div>
+
+<script>
+    const { jsPDF } = window.jspdf;
+
+    // --- BAZA KORISNIKA ---
+    // Nastavnici: Korisničko ime (bez lozinke provjere)
+    const teacherUsers = ['nastavnik', 'profesor', 'admin'];
+    // Učenici: Ime.prezime (Lozinka: ucenik123)
+    const studentPassword = 'ucenik123'; 
+    // --------------------------------------------
+
+    let students = JSON.parse(localStorage.getItem('studentsData')) || [];
+    let classes = JSON.parse(localStorage.getItem('classesData')) || ['1.A','1.B','2.A','2.B','3.A','4.A'];
+    let currentStudent = null;
+    let currentTerm = 1;
+    let selectedClass = localStorage.getItem('selectedClass') || 'Svi razredi';
+    let trenutniPrisustvo = {};
+    let currentUserRole = localStorage.getItem('userRole') || 'guest';
+    let currentUserName = localStorage.getItem('currentUserName') || '';
+    
+    const loginScreen = document.getElementById('loginScreen');
+    const mainApp = document.getElementById('mainApp');
+    const loginForm = document.getElementById('loginForm');
+    const studentsTableBody = document.getElementById('studentsTable').querySelector('tbody');
+    const classListEl = document.getElementById('classList');
+    const formClassesEl = document.getElementById('formClasses');
+    const classesModal = document.getElementById('classesModal');
+    const classesCheckboxes = document.getElementById('classesCheckboxes');
+    const dressCodeInput = document.getElementById('dressCodeInput');
+
+
+    // ==================================================================
+    // === AUTENTIKACIJA I PRISTUP ===
+    // ==================================================================
+    
+    // Funkcija za generiranje korisničkog imena za učenika (pero.peric)
+    function generateStudentUsername(fullName) {
+        // Pretvara ime i prezime u format ime.prezime (čisti ne-alfanumeričke znakove i razmake, osim točke)
+        const cleanedName = fullName.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '');
+        const parts = cleanedName.split(/\s+/);
+        if (parts.length < 2) return cleanedName; 
+        return `${parts[0]}.${parts.slice(1).join('.')}`;
+    }
+
+    function checkLogin() {
+        const loggedIn = localStorage.getItem('isLoggedIn');
+        if (loggedIn === 'true') {
+            showApp();
+        } else {
+            showLogin();
+        }
+    }
+
+    function showLogin() {
+        mainApp.style.display = 'none';
+        loginScreen.style.display = 'flex';
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+        document.getElementById('loginError').textContent = '';
+    }
+
+    function showApp() {
+        loginScreen.style.display = 'none';
+        mainApp.style.display = 'block';
+        document.getElementById('userRoleDisplay').textContent = currentUserRole === 'nastavnik' ? 'Nastavnik' : 'Učenik';
+        
+        // Postavljanje klase za prilagođavanje sučelja
+        document.body.classList.toggle('student-mode', currentUserRole === 'ucenik');
+
+        // Inicijalizacija aplikacije
+        if (currentUserRole === 'nastavnik') {
+             renderClassesSidebar(); // Sidebar je vidljiv samo nastavnicima
+             renderFormClassCheckboxes();
+        } else if (currentUserRole === 'ucenik') {
+            selectedClass = 'Svi razredi';
+        }
+        
+        renderTable();
+        ucitajLekciju();
+        prikaziUcenike();
+    }
+
+    loginForm.addEventListener('submit', e => {
+        e.preventDefault();
+        const username = document.getElementById('username').value.trim().toLowerCase();
+        const password = document.getElementById('password').value;
+        const errorEl = document.getElementById('loginError');
+        errorEl.textContent = '';
+        
+        // 1. Provjera Nastavnika
+        if (teacherUsers.includes(username)) {
+            // Nastavnik prolazi na osnovu imena (zanemarujemo lozinku)
+            currentUserRole = 'nastavnik';
+            currentUserName = username;
+            localStorage.setItem('isLoggedIn', 'true');
+            localStorage.setItem('userRole', currentUserRole);
+            localStorage.setItem('currentUserName', currentUserName);
+            showApp();
+            return;
+        }
+
+        // 2. Provjera Učenika
+        const student = students.find(s => generateStudentUsername(s.name) === username);
+        if (student && password === studentPassword) {
+            currentUserRole = 'ucenik';
+            currentUserName = student.name; // Spremanje punog imena
+            localStorage.setItem('isLoggedIn', 'true');
+            localStorage.setItem('userRole', currentUserRole);
+            localStorage.setItem('currentUserName', currentUserName);
+            showApp();
+            return;
+        }
+
+        errorEl.textContent = 'Neispravno korisničko ime ili lozinka.';
+    });
+
+    function logout() {
+        if (confirm("Jeste li sigurni da se želite odjaviti? Podaci ostaju sačuvani u vašem pregledniku.")) {
+            localStorage.setItem('isLoggedIn', 'false');
+            localStorage.removeItem('userRole');
+            localStorage.removeItem('currentUserName');
+            currentUserRole = 'guest';
+            currentUserName = '';
+            showLogin();
+        }
+    }
+
+    // ==================================================================
+    // === GLAVNA LOGIKA APLIKACIJE ===
+    // ==================================================================
+
+    function saveAll() {
+        localStorage.setItem('studentsData', JSON.stringify(students));
+        localStorage.setItem('classesData', JSON.stringify(classes));
+        localStorage.setItem('selectedClass', selectedClass);
+    }
+    
+    // --- Classes sidebar (Nastavnik) ---
+    function renderClassesSidebar() {
+        classListEl.innerHTML = '';
+        const allLi = document.createElement('li');
+        allLi.textContent = 'Svi razredi';
+        allLi.className = selectedClass === 'Svi razredi' ? 'active' : '';
+        allLi.onclick = () => { selectedClass = 'Svi razredi'; renderClassesSidebar(); renderTable(); prikaziUcenike(); ucitajLekciju(); saveAll(); };
+        classListEl.appendChild(allLi);
+
+        classes.forEach(cls => {
+            const li = document.createElement('li');
+            li.innerHTML = `<span>${cls}</span><span><button title='Obriši razred' class='delete-class-btn' onclick="event.stopPropagation(); deleteClass('${cls}')">×</button></span>`;
+            li.className = selectedClass === cls ? 'active' : '';
+            li.onclick = () => { selectedClass = cls; renderClassesSidebar(); renderTable(); prikaziUcenike(); ucitajLekciju(); saveAll(); };
+            classListEl.appendChild(li);
+        });
+    }
+
+    function addClass() {
+        const name = document.getElementById('newClassName').value.trim();
+        if (!name) return alert('Unesite naziv razreda!');
+        if (classes.includes(name)) return alert('Razred već postoji!');
+        classes.push(name);
+        document.getElementById('newClassName').value = '';
+        saveAll();
+        renderClassesSidebar();
+        renderFormClassCheckboxes();
+    }
+
+    function deleteClass(name) {
+        if (!confirm(`Obriši razred ${name}?`)) return;
+        classes = classes.filter(c => c !== name);
+        students.forEach(s => { s.classes = (s.classes || []).filter(c => c !== name); });
+        if (selectedClass === name) selectedClass = 'Svi razredi';
+        saveAll();
+        renderClassesSidebar();
+        renderFormClassCheckboxes();
+        renderTable();
+        prikaziUcenike();
+    }
+
+    function renderFormClassCheckboxes() {
+        formClassesEl.innerHTML = '';
+        classes.forEach(c => {
+            const id = `form-class-${c.replace(/\W/g, '_')}`;
+            const label = document.createElement('label');
+            label.innerHTML = `<input type='checkbox' value='${c}' id='${id}'> ${c}`;
+            formClassesEl.appendChild(label);
+        });
+    }
+
+    // --- Students ---
+    document.getElementById('studentForm').addEventListener('submit', e => {
+        e.preventDefault();
+        const name = document.getElementById('studentName').value.trim();
+        const behavior = document.getElementById('behavior').value;
+        if (!name) return alert('Unesite ime učenika!');
+        if (students.find(s => s.name === name)) return alert('Učenik već postoji!');
+        
+        // Generiramo login korisničko ime za učenika (automatski)
+        const username = generateStudentUsername(name);
+        if (teacherUsers.includes(username)) return alert('Ovo korisničko ime je rezervirano za nastavnike!');
+        
+        const checked = Array.from(formClassesEl.querySelectorAll('input[type=checkbox]:checked')).map(i => i.value);
+        
+        // Dodajemo učenika sa svim podacima
+        students.push({ name, behavior, classes: checked, term1Final: '', term2Final: '', term1Grades: {}, term2Grades: {} });
+        saveAll();
+        renderTable();
+        prikaziUcenike();
+        document.getElementById('studentForm').reset();
+    });
+
+    function renderTable() {
+        studentsTableBody.innerHTML = '';
+        const izostanci = izbrojiIzostanke();
+        
+        let visibleStudents;
+        
+        if (currentUserRole === 'nastavnik') {
+            // Nastavnik: Filtriranje po odabranom razredu
+            visibleStudents = selectedClass === 'Svi razredi' ? students : students.filter(s => (s.classes || []).includes(selectedClass));
+        } else if (currentUserRole === 'ucenik') {
+            // Učenik: Prikaz samo vlastitih podataka
+            visibleStudents = students.filter(s => s.name === currentUserName);
+        } else {
+            visibleStudents = [];
+        }
+        
+        visibleStudents.sort((a, b) => a.name.localeCompare(b.name)).forEach(student => {
+            
+            const grades = currentTerm === 1 ? student.term1Grades : student.term2Grades;
+            let gradesHtml = '';
+            let sum = 0;
+            let count = 0;
+
+            for (let [sub, arr] of Object.entries(grades || {})) {
+                arr.forEach((g, i) => {
+                    const gradeValue = Number(g.grade);
+                    // Različiti prikaz za učenika (bez gumba za brisanje)
+                    const deleteBtnHtml = currentUserRole === 'nastavnik' ? `<button class="delete-grade-btn" onclick="deleteGrade('${student.name}','${sub}',${i})">x</button>` : '';
+                    
+                    gradesHtml += `<div class="grade-tag grade-${gradeValue}">${sub} (${g.type}): ${gradeValue} ${deleteBtnHtml}</div>`;
+                    
+                    if (gradeValue >= 1 && gradeValue <= 5) {
+                        sum += gradeValue; 
+                        count++;
+                    }
+                });
+            }
+
+            const avg = count > 0 ? (sum / count).toFixed(2) : '-';
+            
+            // Postavljanje vladanja
+            const behaviorDisplay = currentUserRole === 'nastavnik' ? 
+                `<select onchange="promijeniVladanje('${student.name}',this.value)">
+                    <option value='Odlično' ${student.behavior === 'Odlično' ? 'selected' : ''}>Odlično</option>
+                    <option value='Dobro' ${student.behavior === 'Dobro' ? 'selected' : ''}>Dobro</option>
+                    <option value='Zadovoljavajuće' ${student.behavior === 'Zadovoljavajuće' ? 'selected' : ''}>Zadovoljavajuće</option>
+                    <option value='Nedovoljno' ${student.behavior === 'Nedovoljno' ? 'selected' : ''}>Nedovoljno</option>
+                </select>` : 
+                `**${student.behavior}**`;
+
+            const classBadges = (student.classes || []).map(c => `<span class='class-badge'>${c}</span>`).join(' ');
+
+            // Akcije su skrivene za učenike
+            const actionsHtml = currentUserRole === 'nastavnik' ? `
+                <button class="add-grade-btn" onclick="openGradeModal('${student.name}')">+</button>
+                <button class="delete-btn" onclick="deleteStudent('${student.name}')">Obriši</button>
+                <button class="save-btn yellow" onclick="obrisiIzostanke('${student.name}')">Obriši izostanke</button>
+            ` : 'Nema akcija';
+
+            const classActionsHtml = currentUserRole === 'nastavnik' ? 
+                `<button title='Uredi razrede' class="save-btn yellow" onclick="openClassesModal('${student.name}')">🏷</button>` : '';
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${student.name} (${izostanci[student.name] || 0} izostanaka)</td>
+                <td>${classBadges || '-'} ${classActionsHtml}</td>
+                <td>${behaviorDisplay}</td>
+                <td class="grade-${student.term1Final}">${student.term1Final || '-'}</td>
+                <td class="grade-${student.term2Final}">${student.term2Final || '-'}</td>
+                <td>${gradesHtml}</td>
+                <td>${avg}</td>
+                <td class='actions student-hidden-actions'>${actionsHtml}</td>
+            `;
+            studentsTableBody.appendChild(row);
+        });
+    }
+
+    // --- Ostali modali i funkcije (nepromijenjene, ali se pozivaju samo kao Nastavnik) ---
+    
+    function openClassesModal(studentName) {
+        if (currentUserRole !== 'nastavnik') return;
+        currentStudent = students.find(s => s.name === studentName);
+        classesCheckboxes.innerHTML = '';
+        classes.forEach(c => {
+            const id = `chk-${c.replace(/\W/g, '_')}`;
+            const div = document.createElement('div');
+            div.innerHTML = `<label><input type='checkbox' id='${id}' value='${c}' ${ (currentStudent.classes || []).includes(c) ? 'checked' : '' }> ${c}</label>`;
+            classesCheckboxes.appendChild(div);
+        });
+        classesModal.style.display = 'block';
+    }
+
+    function saveStudentClasses() {
+        if (currentUserRole !== 'nastavnik' || !currentStudent) return;
+        const checked = Array.from(classesCheckboxes.querySelectorAll('input[type=checkbox]:checked')).map(i => i.value);
+        currentStudent.classes = checked;
+        saveAll();
+        classesModal.style.display = 'none';
+        renderTable();
+        prikaziUcenike();
+    }
+
+    const gradeModal = document.getElementById('gradeModal');
+    const modalCloseButtons = document.querySelectorAll('.close');
+    modalCloseButtons.forEach(b => b.addEventListener('click', () => { 
+        const target = b.getAttribute('data-close'); 
+        if (target) document.getElementById(target).style.display = 'none'; 
+        else b.parentElement.parentElement.style.display = 'none'; 
+    }));
+    const modalType = document.getElementById('modalType');
+    const subjectGroup = document.getElementById('subjectInputGroup');
+    modalType.addEventListener('change', () => { subjectGroup.style.display = modalType.value === 'regular' ? 'block' : 'none'; });
+
+    function openGradeModal(studentName) {
+        if (currentUserRole !== 'nastavnik') return;
+        currentStudent = students.find(s => s.name === studentName);
+        gradeModal.style.display = 'block';
+        document.getElementById('modalSubject').value = '';
+        document.getElementById('modalGrade').value = '5';
+        document.getElementById('modalGradeType').value = 'Usmeni odgovor';
+        document.getElementById('modalBehavior').value = currentStudent.behavior;
+        modalType.value = 'regular';
+        subjectGroup.style.display = 'block';
+    }
+
+    document.getElementById('modalGradeForm').addEventListener('submit', e => {
+        e.preventDefault();
+        if (currentUserRole !== 'nastavnik') return;
+
+        const type = document.getElementById('modalType').value;
+        const grade = document.getElementById('modalGrade').value;
+        const gradeType = document.getElementById('modalGradeType').value;
+        const behavior = document.getElementById('modalBehavior').value;
+        
+        currentStudent.behavior = behavior;
+
+        if (type === 'final') {
+            if (currentTerm === 1) currentStudent.term1Final = grade;
+            else currentStudent.term2Final = grade;
+        } else {
+            const subject = document.getElementById('modalSubject').value.trim();
+            if (!subject) return alert('Unesite predmet!');
+            const termGrades = currentTerm === 1 ? currentStudent.term1Grades : currentStudent.term2Grades;
+            if (!termGrades[subject]) termGrades[subject] = [];
+            termGrades[subject].push({ grade: grade, type: gradeType }); 
+        }
+
+        saveAll();
+        renderTable();
+        gradeModal.style.display = 'none';
+    });
+
+    function deleteGrade(studentName, subject, index) {
+        if (currentUserRole !== 'nastavnik') return;
+        const student = students.find(s => s.name === studentName);
+        const termGrades = currentTerm === 1 ? student.term1Grades : student.term2Grades;
+        termGrades[subject].splice(index, 1);
+        if (termGrades[subject].length === 0) delete termGrades[subject];
+        saveAll();
+        renderTable();
+    }
+
+    function promijeniVladanje(name, value) {
+        if (currentUserRole !== 'nastavnik') return;
+        const student = students.find(s => s.name === name);
+        if (student) { student.behavior = value; saveAll(); renderTable(); }
+    }
+
+    // --- Evidencija prisustva (Samo za Nastavnike) ---
+    function ucitajPrisustvo(datum) { return (JSON.parse(localStorage.getItem("prisustvoPoDatumima")) || {})[datum] || {}; }
+    
+    function ucitajLekciju() {
+        if (currentUserRole !== 'nastavnik') return; // Učenici ne mogu učitati / vidjeti ovu formu
+        const datum = document.getElementById("datum").value;
+        if (!datum) {
+            document.getElementById("lessonInput").value = '';
+            dressCodeInput.value = '';
+            return;
+        }
+
+        const sveLekcije = JSON.parse(localStorage.getItem("lekcijePoDatumima")) || {};
+        const lekcijaZaDatum = sveLekcije[datum] || {};
+        
+        const lessonInput = document.getElementById("lessonInput");
+        lessonInput.value = (lekcijaZaDatum[selectedClass] && lekcijaZaDatum[selectedClass].lekcija) || '';
+
+        dressCodeInput.value = (lekcijaZaDatum[selectedClass] && lekcijaZaDatum[selectedClass].odjevenost) || '';
+    }
+
+
+
+    function oznaciPrisustvo(ime, prisutan, red, sacuvaj = true) {
+        if (currentUserRole !== 'nastavnik') return;
+        red.style.backgroundColor = prisutan ? "#e6f4e6" : "#fbe9e7";
+        trenutniPrisustvo[ime] = prisutan;
+        if (sacuvaj) {
+            const datum = document.getElementById("datum").value;
+            if (datum) {
+                const svePrisustvo = JSON.parse(localStorage.getItem("prisustvoPoDatumima")) || {};
+                svePrisustvo[datum] = trenutniPrisustvo;
+                localStorage.setItem("prisustvoPoDatumima", JSON.stringify(svePrisustvo));
+            }
+        }
+    }
+
+    function spremiLekciju() {
+        if (currentUserRole !== 'nastavnik') return;
+        const datum = document.getElementById("datum").value;
+        if (!datum) { alert("Odaberite datum!"); return; }
+        
+        const lekcija = document.getElementById("lessonInput").value.trim();
+        const odjevenost = dressCodeInput.value.trim();
+
+        const sveLekcije = JSON.parse(localStorage.getItem("lekcijePoDatumima")) || {};
+        if (!sveLekcije[datum]) sveLekcije[datum] = {};
+        
+        sveLekcije[datum][selectedClass] = { lekcija, odjevenost };
+        
+        localStorage.setItem("lekcijePoDatumima", JSON.stringify(sveLekcije));
+
+        const svePrisustvo = JSON.parse(localStorage.getItem("prisustvoPoDatumima")) || {};
+        svePrisustvo[datum] = trenutniPrisustvo;
+        localStorage.setItem("prisustvoPoDatumima", JSON.stringify(svePrisustvo));
+
+        alert(`Lekcija, odjevenost i prisustvo za ${datum} su spremljeni!`);
+        renderTable();
+    }
+
+    function preuzmiPDFPopis() {
+        if (currentUserRole !== 'nastavnik') return;
+        const datum = document.getElementById("datum").value;
+        if (!datum) { alert("Odaberite datum!"); return; }
+
+        const doc = new jsPDF();
+        doc.setFontSize(16);
+        doc.text(`Evidencija za ${selectedClass} – ${datum}`, 10, 20);
+        let y = 30;
+
+        const sveLekcije = JSON.parse(localStorage.getItem("lekcijePoDatumima")) || {}; 
+        const podaciZaDatum = (sveLekcije[datum] || {})[selectedClass] || {};
+        
+        doc.setFontSize(12);
+        doc.text(`Odjevenost: ${podaciZaDatum.odjevenost || '-'}`, 10, y); y += 8;
+
+        doc.setFontSize(12);
+        doc.text(`Što se radilo na satu: ${podaciZaDatum.lekcija || '-'}`, 10, y); y += 12;
+
+        const svePrisustvo = JSON.parse(localStorage.getItem("prisustvoPoDatumima")) || {};
+        const prisustvo = svePrisustvo[datum] || {};
+        
+        doc.setFontSize(14);
+        doc.text(`Evidencija prisustva:`, 10, y); y += 8;
+        
+        doc.setFontSize(12);
+        const studentsToPrint = selectedClass === 'Svi razredi' ? students : students.filter(s => (s.classes || []).includes(selectedClass));
+        studentsToPrint.sort((a, b) => a.name.localeCompare(b.name)).forEach(student => {
+            const status = prisustvo[student.name] === true ? "Prisutan" : prisustvo[student.name] === false ? "Odsutan" : "-";
+            doc.text(`${student.name}: ${status}`, 10, y);
+            y += 7; if (y > 280) { doc.addPage(); y = 20; }
+        });
+        doc.save(`evidencija_${selectedClass}_${datum}.pdf`);
+    }
+
+    function obrisiPopis() {
+        if (currentUserRole !== 'nastavnik') return;
+        if (!confirm("Obriši cijelu evidenciju za ovaj datum?")) return;
+        const datum = document.getElementById("datum").value;
+        const prisustvo = JSON.parse(localStorage.getItem("prisustvoPoDatumima")) || {};
+        const lekcije = JSON.parse(localStorage.getItem("lekcijePoDatumima")) || {}; 
+        if (datum) { 
+            delete prisustvo[datum]; 
+            if (lekcije[datum]) delete lekcije[datum][selectedClass];
+            if (Object.keys(lekcije[datum] || {}).length === 0) delete lekcije[datum];
+
+            localStorage.setItem("prisustvoPoDatumima", JSON.stringify(prisustvo)); 
+            localStorage.setItem("lekcijePoDatumima", JSON.stringify(lekcije)); 
+            ucitajLekciju(); 
+            prikaziUcenike(); 
+        }
+    }
+
+    function izbrojiIzostanke() {
+        const prisustvoPoDatumima = JSON.parse(localStorage.getItem("prisustvoPoDatumima")) || {};
+        const counts = {};
+        Object.values(prisustvoPoDatumima).forEach(datum => {
+            Object.entries(datum).forEach(([name, p]) => {
+                if (p === false) { 
+                    counts[name] = (counts[name] || 0) + 1; 
+                }
+            });
+        });
+        return counts;
+    }
+
+    // --- Delete students and data (Samo za Nastavnike) ---
+    function deleteStudent(name) { 
+        if (currentUserRole !== 'nastavnik') return;
+        if (confirm(`Obriši učenika ${name}?`)) { students = students.filter(s => s.name !== name); saveAll(); renderTable(); prikaziUcenike(); } 
+    }
+    
+    function obrisiSveUcenike() { 
+        if (currentUserRole !== 'nastavnik') return;
+        if (confirm("Obriši sve učenike?")) { students = []; saveAll(); renderTable(); prikaziUcenike(); } 
+    }
+    
+    function obrisiIzostanke(name) {
+        if (currentUserRole !== 'nastavnik') return;
+        if (!confirm(`Obriši sve zabilježene izostanke za učenika ${name}?`)) return;
+        let prisustvoPoDatumima = JSON.parse(localStorage.getItem("prisustvoPoDatumima")) || {};
+        
+        Object.keys(prisustvoPoDatumima).forEach(datum => {
+            if (prisustvoPoDatumima[datum] && prisustvoPoDatumima[datum][name] !== undefined) {
+                delete prisustvoPoDatumima[datum][name];
+            }
+        });
+        localStorage.setItem("prisustvoPoDatumima", JSON.stringify(prisustvoPoDatumima));
+        renderTable();
+        prikaziUcenike();
+    }
+</script>
+
+</body>
+</html>
