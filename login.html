@@ -56,13 +56,13 @@
     <div class="login-container">
         <div class="header-section">
             <img src="e-dnevnik-logo.png" alt="Big Ben E-Dnevnik Logo" style="width:100px;height:100px;">
-            <h3>LOGIN TO BIG BEN E-DNEVNIK</h3>
+            <h3>LOGIN TO E-DNEVNIK</h3>
         </div>
 
         <form id="loginForm">
             <div class="form-group">
                 <div class="row">
-                    <label for="username" class="col-sm-4 control-label">Username:</label>
+                    <label for="username" class="col-sm-4 control-label">Korisničko ime:</label>
                     <div class="col-sm-8">
                         <input type="text" class="form-control" id="username" name="username" placeholder="ime.prezime" required>
                     </div>
@@ -71,7 +71,7 @@
 
             <div class="form-group">
                 <div class="row">
-                    <label for="password" class="col-sm-4 control-label">Password:</label>
+                    <label for="password" class="col-sm-4 control-label">Lozinka:</label>
                     <div class="col-sm-8">
                         <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
                     </div>
@@ -88,22 +88,28 @@
                 </div>
             </div>
         </form>
+        
+    
     </div>
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
 
     <script>
+        // Funkcija za ekstrakciju ID-a učenika (prvi deo pre tačke)
+        function extractStudentId(username) {
+            // "Omer.Smailbegovic" -> "Omer"
+            return username.split('.')[0];
+        }
+
         function checkLogin(event) {
-            // Sprečava podrazumevano ponašanje forme (koje bi ponovo učitalo stranicu)
             event.preventDefault(); 
 
-            // Dohvatanje vrednosti iz polja
-            const username = document.getElementById('username').value;
+            const username = document.getElementById('username').value.trim(); // Trim uklanja razmake
             const password = document.getElementById('password').value;
             const messageDiv = document.getElementById('message');
             
-            // Lista učenika koji koriste šifru "ucenik123"
+            // Lista validnih korisničkih imena učenika
             const students = [
                 'Omer.Smailbegovic', 
                 'Boris.Dupljanin', 
@@ -113,28 +119,37 @@
 
             let success = false;
             let role = '';
+            let targetId = '';
 
             // 1. Provera za NASTAVNIKA
             if (username === 'Prof.Boris' && password === '2805') {
                 success = true;
                 role = 'Nastavnik';
+                targetId = 'Nastavnik'; // Fiksni ID za nastavnika
             } 
             // 2. Provera za UČENIKE
             else if (students.includes(username) && password === 'ucenik123') {
                 success = true;
                 role = 'Učenik';
+                // Izdvajamo ID (npr. Omer) iz unetog imena (Omer.Smailbegovic)
+                targetId = extractStudentId(username); 
             }
 
-            // Prikaz rezultata
+            // Prikaz rezultata i preusmeravanje
             messageDiv.style.display = 'block';
             if (success) {
                 messageDiv.className = 'alert alert-success';
-                messageDiv.innerHTML = `**Uspešna prijava!** Dobrodošli, ${role} (${username}).`;
+                messageDiv.innerHTML = `**Uspešna prijava!** Dobrodošli, ${role} (${username}). Preusmeravanje...`;
+                
+                // Određivanje destinacije
                 if(role === 'Nastavnik') {
+                    // Preusmeravanje na glavnu stranicu nastavnika (pregled svih ocena)
                     window.location.href = 'nastavnik.html';
                 } else {
-                    window.location.href = 'ucenik.html';
+                    // PREUSMERAVANJE UČENIKA SA ID PARAMETROM
+                    window.location.href = `ucenik.html?student=${targetId}`;
                 }
+                
             } else {
                 messageDiv.className = 'alert alert-danger';
                 messageDiv.innerHTML = '**Greška pri prijavi!** Proverite korisničko ime i lozinku.';
